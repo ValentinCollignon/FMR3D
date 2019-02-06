@@ -11,7 +11,7 @@
 using namespace std;
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
-
+const int taille = 800;
 
 
 struct vector2D{
@@ -102,18 +102,20 @@ void bary(Point3DI p1, Point3DI p2, Point3DI p3, TGAImage &image,TGAColor color)
     }
   }
 }
+
+vector3DF barycentrique (
 void dessin(int points1, int points2, int points3,vector< vector< float> >points,TGAImage &image){
   Point3DF lumiere(0,0,-1);
   int x0,x1,x2,y1,y2,y0,z0,z1,z2;
-  x0=(points[points1-1][0]+1)*400;
-  y0=(points[points1-1][1]+1)*400;
-  z0=(points[points1-1][2]+1)*400;
-  x1=(points[points2-1][0]+1)*400;
-  y1=(points[points2-1][1]+1)*400;
-  z1=(points[points2-1][2]+1)*400;
-  x2=(points[points3-1][0]+1)*400;
-  y2=(points[points3-1][1]+1)*400;
-  z2=(points[points3-1][2]+1)*400;
+  x0=(points[points1-1][0]+1)*taille/2;
+  y0=(points[points1-1][1]+1)*taille/2;
+  z0=(points[points1-1][2]+1)*taille/2;
+  x1=(points[points2-1][0]+1)*taille/2;
+  y1=(points[points2-1][1]+1)*taille/2;
+  z1=(points[points2-1][2]+1)*taille/2;
+  x2=(points[points3-1][0]+1)*taille/2;
+  y2=(points[points3-1][1]+1)*taille/2;
+  z2=(points[points3-1][2]+1)*taille/2;
   Point3DI p1 = Point3D<int>(x0,y0,z0);
   Point3DI p2 = Point3D<int>(x1,y1,z1);
   Point3DI p3 = Point3D<int>(x2,y2,z2);
@@ -132,7 +134,7 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
 
 
 int main(int argc, char** argv) {
-        TGAImage image(800, 800, TGAImage::RGB);
+        TGAImage image(taille,taille , TGAImage::RGB);
 	string name = "african_head.obj";
 
 	std::ifstream fichier(name.c_str());
@@ -153,15 +155,6 @@ int main(int argc, char** argv) {
 	    fichier >> ligne;
 	    points.push_back(v);
 	  }
-	    int x;
-	    int y;
-	    int s =points.size();
-	    for(int i = 0 ; i<s;i++){
-	      x=(points[i][0]+1)*400;
-	      y=(points[i][1]+1)*400;
-	      image.set(x, y, white);
-	    }
-
 	    while( ligne != "f"){
 		fichier >> ligne;
 	    }
