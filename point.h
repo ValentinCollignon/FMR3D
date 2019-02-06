@@ -1,15 +1,14 @@
 #ifndef POINT_H
 #define POINT_H
-
+#include "cmath"
 template<typename T > class Point3D{
   public:
-    Point3D(T i,T j, T k){x =i;y=j;z=k;}
-    Point3D(T i,T j){x =i;y=j;z=0;}
-    T getX(){return x;}
-    T getY(){return y;}
-    T getZ(){return z;}
+    Point3D(T i=0,T j=0, T k=0){x =i;y=j;z=k;}
+    T getX()const{return x;}
+    T getY()const{return y;}
+    T getZ()const{return z;}
     float norm(){
-            return sqrt(x*x+y*y+z*z);
+            return (std::sqrt(x*x+y*y+z*z));
         }
         Point3D<T> & normalize(T l = 1){
             *this = (*this)*(l/norm());

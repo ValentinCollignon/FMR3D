@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <stdlib.h>
 using namespace std;
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
@@ -102,6 +103,7 @@ void bary(Point3DI p1, Point3DI p2, Point3DI p3, TGAImage &image,TGAColor color)
   }
 }
 void dessin(int points1, int points2, int points3,vector< vector< float> >points,TGAImage &image){
+  Point3DF lumiere(0,0,-1);
   int x0,x1,x2,y1,y2,y0,z0,z1,z2;
   x0=(points[points1-1][0]+1)*400;
   y0=(points[points1-1][1]+1)*400;
@@ -115,12 +117,17 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
   Point3DI p1 = Point3D<int>(x0,y0,z0);
   Point3DI p2 = Point3D<int>(x1,y1,z1);
   Point3DI p3 = Point3D<int>(x2,y2,z2);
-  int r1 = rand()%256;
-  int r2 = rand()%256;
-  int r3 = rand()%256;
+  Point3DF world_coords[3],n;
+  world_coords[0] = Point3DF(points[points1-1][0]+1,points[points1-1][1]+1,points[points1-1][2]+1);
+  world_coords[1] = Point3DF(points[points2-1][0]+1,points[points2-1][1]+1,points[points2-1][2]+1);
+  world_coords[2] = Point3DF(points[points3-1][0]+1,points[points3-1][1]+1,points[points3-1][2]+1);
+   n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
+  n.normalize();
   
-  
-  bary(p1, p2, p3,image,TGAColor(r1,r2,r3));
+  float intensite = n*lumiere;
+  if(intensite>0){
+    bary(p1, p2, p3,image,TGAColor(255*intensite,255*intensite,255*intensite,255));
+  }
 }
 
 
@@ -186,6 +193,6 @@ int main(int argc, char** argv) {
 
 
 	image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-        image.write_tga_file("output3.tga");
+        image.write_tga_file("output4.tga");
         return 0;
 }
