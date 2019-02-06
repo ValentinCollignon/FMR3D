@@ -1,4 +1,5 @@
 #include "tgaimage.h"
+#include "point.h"
 #include "cmath"
 #include <iostream>
 #include <fstream>
@@ -9,6 +10,27 @@
 using namespace std;
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
+
+
+
+struct vector2D{
+  float x,y;
+};
+struct vector3D{
+  float x,y,z;
+};
+
+struct vector2DI{
+  int x,y;
+};
+struct vector3DI{
+  int x,y,z;
+};
+struct triangle{
+  Point3DI p1,p2,p3;
+};
+
+//const vector3D lumiere = (0,0,-1);
 
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
        bool steep = false;
@@ -40,55 +62,7 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
     }
 }
 
-void triangle(int x0, int y0, int x1, int y1, int x2, int y2, TGAImage &image, TGAColor color) {
 
-
-    if (y0>y1) {
-            std::swap(x0, x1);
-            std::swap(y0, y1);
-    }
-    if (y0>y2) {
-            std::swap(x0, x2);
-            std::swap(y0, y2);
-    }
-    if (y1>y2) {
-            std::swap(x1, x2);
-            std::swap(y1, y2);
-    }
-    int total_height = y2-y0;
-    for (int y=y0; y<=y1; y++) {
-        int segment_height = y1-y0+1;
-        float alpha = (float)(y-y0)/total_height;
-        float beta  = (float)(y-y0)/segment_height; // be careful with divisions by zero
-        int xA = x0 + (x2-x0)*alpha;
-        int xB = x0 + (x1-x0)*beta;
-        int yA = y0 + (y2-y0)*alpha;
-        int yB = y0 + (y1-y0)*beta;
-        if (xA>xB) {
-                std::swap(xA,xB);
-                 std::swap(yA,yB);
-        }
-        for (int j=xA; j<=xB; j++) {
-            image.set(j, y, color); // attention, due to int casts y0+i != A.y
-        }
-    }
-    for (int y=y1; y<=y2; y++) {
-        int segment_height =  y2-y1+1;
-        float alpha = (float)(y-y0)/total_height;
-        float beta  = (float)(y-y1)/segment_height; // be careful with divisions by zero
-        int xA = x0 + (x2-x0)*alpha;
-        int xB = x1 + (x2-x1)*beta;
-        int yA = y0 + (y2-y0)*alpha;
-        int yB = y1 + (y2-y1)*beta;
-       if (xA>xB) {
-                std::swap(xA,xB);
-                 std::swap(yA,yB);
-        }
-        for (int j=xA; j<=xB; j++) {
-            image.set(j, y, color); // attention, due to int casts y0+i != A.y
-        }
-    }
-}
 std::vector<std::string> split(const std::string &chaine, char delimiteur)
 {
   std::vector<std::string> elements;
@@ -100,20 +74,55 @@ std::vector<std::string> split(const std::string &chaine, char delimiteur)
   }
   return elements;
 }
+float crossProduct(vector2D v1,vector2D v2){
+    return (v1.x*v2.y-v1.y*v2.x );
+}
 
+void bary(Point3DI p1, Point3DI p2, Point3DI p3, TGAImage &image,TGAColor color){
+  int maxX = max(p1.getX(),max(p2.getX(),p3.getX()));
+  int minX = min(p1.getX(),min(p2.getX(),p3.getX()));
+  int maxY = max(p1.getY(),max(p2.getY(),p3.getY()));
+  int minY = min(p1.getY(),min(p2.getY(),p3.getY()));
+  
+  vector2D vs1{p2.getX()-(float)p1.getX(),p2.getY()-(float)p1.getY()};
+  vector2D vs2{p3.getX()-(float)p1.getX(),p3.getY()-(float)p1.getY()};
+  
+  for(int x = minX;x<=maxX;x++){
+    for(int y = minY;y<=maxY;y++){
+      vector2D q{x - (float)p1.getX(), y - (float)p1.getY()};
+    
+      float s = crossProduct(q, vs2) / crossProduct(vs1, vs2);
+      float t = crossProduct(vs1, q) / crossProduct(vs1, vs2);
+      
+      if ( (s >= 0) && (t >= 0) && (s + t <= 1))
+      { /* inside triangle */
+	image.set(x, y,color);
+      }
+    }
+  }
+}
 void dessin(int points1, int points2, int points3,vector< vector< float> >points,TGAImage &image){
-  int x0,x1,x2,y1,y2,y0;
+  int x0,x1,x2,y1,y2,y0,z0,z1,z2;
   x0=(points[points1-1][0]+1)*400;
   y0=(points[points1-1][1]+1)*400;
+  z0=(points[points1-1][2]+1)*400;
   x1=(points[points2-1][0]+1)*400;
   y1=(points[points2-1][1]+1)*400;
+  z1=(points[points2-1][2]+1)*400;
   x2=(points[points3-1][0]+1)*400;
   y2=(points[points3-1][1]+1)*400;
-  line(x0,y0,x1,y1,image,white);
-  line(x1,y1,x2,y2,image,white);
-  line(x0,y0,x2,y2,image,white);
-  triangle( x0,y0,x1,y1,x2,y2,image,white);
+  z2=(points[points3-1][2]+1)*400;
+  Point3DI p1 = Point3D<int>(x0,y0,z0);
+  Point3DI p2 = Point3D<int>(x1,y1,z1);
+  Point3DI p3 = Point3D<int>(x2,y2,z2);
+  int r1 = rand()%256;
+  int r2 = rand()%256;
+  int r3 = rand()%256;
+  
+  
+  bary(p1, p2, p3,image,TGAColor(r1,r2,r3));
 }
+
 
 int main(int argc, char** argv) {
         TGAImage image(800, 800, TGAImage::RGB);
@@ -123,9 +132,6 @@ int main(int argc, char** argv) {
 
 
 	vector< vector< float> > points;
-   /* triangle(10,70,50,160,70,80,image,red);
-    triangle(180,50,150,1,70,180,image,white);
-    triangle(180,150,120,160,130,180,image,red);*/
 	if(fichier) {
 	  std::string ligne;
 	  fichier >> ligne;
@@ -136,6 +142,7 @@ int main(int argc, char** argv) {
 	    fichier >> ligne;
 	    v.push_back(atof(ligne.c_str()));
 	    fichier >> ligne;
+	    v.push_back(atof(ligne.c_str()));
 	    fichier >> ligne;
 	    points.push_back(v);
 	  }
