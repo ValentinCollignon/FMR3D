@@ -24,9 +24,7 @@ struct vector3D{
 struct vector2DI{
   int x,y;
 };
-struct vector3DI{
-  int x,y,z;
-};
+
 struct triangle{
   Point3DI p1,p2,p3;
 };
@@ -78,33 +76,47 @@ std::vector<std::string> split(const std::string &chaine, char delimiteur)
 float crossProduct(vector2D v1,vector2D v2){
     return (v1.x*v2.y-v1.y*v2.x );
 }
+Point3DF barycentre(Point3DF p1,Point3DF p2,Point3DF p3,Point3DF p){
+  Point3DF t1(p3.getX()-p1.getX(),p2.getX()-p1.getX(),p1.getX()-p.getX());
+  Point3DF t2(p3.getY()-p1.getY(),p2.getY()-p1.getY(),p1.getY()-p.getY());
 
-void bary(Point3DI p1, Point3DI p2, Point3DI p3, TGAImage &image,TGAColor color){
+  Point3DF bary = t1^(t2);
+  float comp = std::abs(bary.getZ());
+  if(comp < 1){
+    
+     return Point3DF(-1,1,1);
+  }
+  return Point3DF(1.f-(bary.getX()+bary.getY())/bary.getZ(),
+                  bary.getY()/bary.getZ(),
+		  bary.getX()/bary.getZ());
+}
+void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer, TGAImage &image,TGAColor color){
   int maxX = max(p1.getX(),max(p2.getX(),p3.getX()));
   int minX = min(p1.getX(),min(p2.getX(),p3.getX()));
   int maxY = max(p1.getY(),max(p2.getY(),p3.getY()));
   int minY = min(p1.getY(),min(p2.getY(),p3.getY()));
   
-  vector2D vs1{p2.getX()-(float)p1.getX(),p2.getY()-(float)p1.getY()};
-  vector2D vs2{p3.getX()-(float)p1.getX(),p3.getY()-(float)p1.getY()};
-  
-  for(int x = minX;x<=maxX;x++){
-    for(int y = minY;y<=maxY;y++){
-      vector2D q{x - (float)p1.getX(), y - (float)p1.getY()};
-    
-      float s = crossProduct(q, vs2) / crossProduct(vs1, vs2);
-      float t = crossProduct(vs1, q) / crossProduct(vs1, vs2);
-      
-      if ( (s >= 0) && (t >= 0) && (s + t <= 1))
-      { /* inside triangle */
-	image.set(x, y,color);
+  Point3DF t;
+  float z(0);
+  for(float x = minX ; x <= maxX ; x++){
+    for(float y = minY; y<= maxY ;y++){
+      t = Point3DF(x,y,z);
+      Point3DF bar = barycentre(p1,p2,p3,t);
+      if(bar.getX()<0 || bar.getY() <0 || bar.getZ()<0) continue;
+      z = 0;
+      z = (p1.getZ()*bar.getX())+(p2.getZ()*bar.getY())+(p3.getZ()*bar.getZ());
+      if(z_buffer[int(x+y*taille)] < z ){
+        z_buffer[int(x+y*taille)] = z ;
+        image.set(x,y,color);
+        
+
       }
     }
-  }
+}
 }
 
-vector3DF barycentrique (
-void dessin(int points1, int points2, int points3,vector< vector< float> >points,TGAImage &image){
+
+void dessin(int points1, int points2, int points3,vector< vector< float> >points,float * z_buffer,TGAImage &image){
   Point3DF lumiere(0,0,-1);
   int x0,x1,x2,y1,y2,y0,z0,z1,z2;
   x0=(points[points1-1][0]+1)*taille/2;
@@ -116,9 +128,9 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
   x2=(points[points3-1][0]+1)*taille/2;
   y2=(points[points3-1][1]+1)*taille/2;
   z2=(points[points3-1][2]+1)*taille/2;
-  Point3DI p1 = Point3D<int>(x0,y0,z0);
-  Point3DI p2 = Point3D<int>(x1,y1,z1);
-  Point3DI p3 = Point3D<int>(x2,y2,z2);
+  Point3DF p1 = Point3D<float>(x0,y0,z0);
+  Point3DF p2 = Point3D<float>(x1,y1,z1);
+  Point3DF p3 = Point3D<float>(x2,y2,z2);
   Point3DF world_coords[3],n;
   world_coords[0] = Point3DF(points[points1-1][0]+1,points[points1-1][1]+1,points[points1-1][2]+1);
   world_coords[1] = Point3DF(points[points2-1][0]+1,points[points2-1][1]+1,points[points2-1][2]+1);
@@ -128,7 +140,7 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
   
   float intensite = n*lumiere;
   if(intensite>0){
-    bary(p1, p2, p3,image,TGAColor(255*intensite,255*intensite,255*intensite,255));
+    bary(p1, p2, p3,z_buffer,image,TGAColor(255*intensite,255*intensite,255*intensite,255));
   }
 }
 
@@ -136,11 +148,14 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
 int main(int argc, char** argv) {
         TGAImage image(taille,taille , TGAImage::RGB);
 	string name = "african_head.obj";
-
+	float * z_buffer = new float[taille*taille];
+	
 	std::ifstream fichier(name.c_str());
 
-
+	Point3DI texturef
+	int x,y,z;
 	vector< vector< float> > points;
+	vector< vector< float> > textureVt;
 	if(fichier) {
 	  std::string ligne;
 	  fichier >> ligne;
@@ -155,7 +170,21 @@ int main(int argc, char** argv) {
 	    fichier >> ligne;
 	    points.push_back(v);
 	  }
-	    while( ligne != "f"){
+	    while( ligne != "vt"){
+		fichier >> ligne;
+	    }
+	    while( ligne == "vt"){
+	    vector<float> v;
+	    fichier >> ligne;
+	    v.push_back(atof(ligne.c_str()));
+	    fichier >> ligne;
+	    v.push_back(atof(ligne.c_str()));
+	    fichier >> ligne;
+	    v.push_back(atof(ligne.c_str()));
+	    fichier >> ligne;
+	    textureVt.push_back(v);
+	  }
+	    while( ligne != "vt"){
 		fichier >> ligne;
 	    }
 	    while( ligne == "f"){
@@ -166,13 +195,18 @@ int main(int argc, char** argv) {
 	      fichier >> ligne;
 	      v=split(ligne,'/');
 	      points1= atoi(v[0].c_str());
+	      x=atoi(v[1].c_str());
 	      fichier >> ligne;
 	      v=split(ligne,'/');
 	      points2= atoi(v[0].c_str());
+	      y=atoi(v[1].c_str());
 	      fichier >> ligne;
 	      v=split(ligne,'/');
 	      points3= atoi(v[0].c_str());
-	      dessin(points1,points2,points3,points,image);
+	      z=atoi(v[1].c_str());
+	      
+	      texturef= new Point3DI(x,y,z);
+	      dessin(points1,points2,points3,points,textureVt,texturef,image);
 	      fichier >> ligne;
 	    }
 
@@ -186,6 +220,6 @@ int main(int argc, char** argv) {
 
 
 	image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-        image.write_tga_file("output4.tga");
+        image.write_tga_file("output5.tga");
         return 0;
 }
