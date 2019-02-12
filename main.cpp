@@ -83,21 +83,22 @@ Point3DF barycentre(Point3DF p1,Point3DF p2,Point3DF p3,Point3DF p){
   Point3DF bary = t1^(t2);
   float comp = std::abs(bary.getZ());
   if(comp < 1){
-    
+
      return Point3DF(-1,1,1);
   }
   return Point3DF(1.f-(bary.getX()+bary.getY())/bary.getZ(),
                   bary.getY()/bary.getZ(),
 		  bary.getX()/bary.getZ());
 }
-void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,float intensite, TGAImage &image, TGAImage &texture){
+void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Point3DF pt2,Point3DF pt3,float intensite, TGAImage &image, TGAImage &texture){
   int maxX = max(p1.getX(),max(p2.getX(),p3.getX()));
   int minX = min(p1.getX(),min(p2.getX(),p3.getX()));
   int maxY = max(p1.getY(),max(p2.getY(),p3.getY()));
   int minY = min(p1.getY(),min(p2.getY(),p3.getY()));
-  
+
   Point3DF t;
-  float z(0);
+  float z=0;
+  float textureX, textureY;
   for(float x = minX ; x <= maxX ; x++){
     for(float y = minY; y<= maxY ;y++){
       t = Point3DF(x,y,z);
@@ -107,8 +108,14 @@ void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,float intensite,
       z = (p1.getZ()*bar.getX())+(p2.getZ()*bar.getY())+(p3.getZ()*bar.getZ());
       if(z_buffer[int(x+y*taille)] < z ){
         z_buffer[int(x+y*taille)] = z ;
-        image.set(x,y,color);
-        
+
+        textureX = pt1.getX()*bar.getX() + pt2.getX()*bar.getY() + pt3.getX()*bar.getZ();
+        textureY = pt1.getY()*bar.getX() + pt2.getY()*bar.getY() + pt3.getY()*bar.getZ();
+
+        TGAColor color = texture.get(textureX * texture.get_width() , textureY * texture.get_height());
+
+        image.set(x,y,color*intensite);
+
 
       }
     }
@@ -137,29 +144,33 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
   world_coords[2] = Point3DF(points[points3-1][0]+1,points[points3-1][1]+1,points[points3-1][2]+1);
    n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
   n.normalize();
-  
+
   float intensite = n*lumiere;
-  Point3DF pt1 = 
-  Point3DF pt2
-  Point3DF pt3
-  
+  Point3DF pt1 = (textureVt[texturef.getX()-1]);
+  Point3DF pt2 = (textureVt[texturef.getY()-1]);
+  Point3DF pt3 = (textureVt[texturef.getZ()-1]);
+
   if(intensite>0){
-    bary(p1, p2, p3,z_buffer,intensite,image,texture);
+    bary(p1, p2, p3,z_buffer,pt1,pt2,pt3,intensite,image,texture);
   }
 }
 
 
 int main(int argc, char** argv) {
         TGAImage image(taille,taille , TGAImage::RGB);
-	string name = "african_head.obj";
+	//string name = "african_head.obj";
+    string name = "diablo3_pose.obj";
+
 	TGAImage texture;
-	texture.read_tga_file("african_head_diffuse.tga");
+	//texture.read_tga_file("african_head_diffuse.tga");
+	texture.read_tga_file("diablo3_pose_diffuse.tga");
+
 	texture.flip_vertically();
 	float * z_buffer = new float[taille*taille];
-	
+
 	std::ifstream fichier(name.c_str());
 
-	Point3DI texturef
+
 	int x,y,z;
 	float xt,yt,zt;
 	vector< vector< float> > points;
@@ -182,7 +193,7 @@ int main(int argc, char** argv) {
 		fichier >> ligne;
 	    }
 	    while( ligne == "vt"){
-	    Point3DF v;
+
 	    fichier >> ligne;
 	    xt= atof(ligne.c_str());
 	    fichier >> ligne;
@@ -190,10 +201,10 @@ int main(int argc, char** argv) {
 	    fichier >> ligne;
 	    zt= atof(ligne.c_str());
 	    fichier >> ligne;
-	    v=new Point3DF(xt,yt,zt);
+	    Point3DF v(xt,yt,zt);
 	    textureVt.push_back(v);
 	  }
-	    while( ligne != "vt"){
+	    while( ligne != "f"){
 		fichier >> ligne;
 	    }
 	    while( ligne == "f"){
@@ -213,8 +224,8 @@ int main(int argc, char** argv) {
 	      v=split(ligne,'/');
 	      points3= atoi(v[0].c_str());
 	      z=atoi(v[1].c_str());
-	      
-	      texturef= new Point3DI(x,y,z);
+
+	      Point3DI texturef(x,y,z);
 	      dessin(points1,points2,points3,points,textureVt,texturef,z_buffer,image,texture);
 	      fichier >> ligne;
 	    }
@@ -229,6 +240,6 @@ int main(int argc, char** argv) {
 
 
 	image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-        image.write_tga_file("output5.tga");
+        image.write_tga_file("output7.tga");
         return 0;
 }
