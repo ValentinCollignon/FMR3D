@@ -90,7 +90,7 @@ Point3DF barycentre(Point3DF p1,Point3DF p2,Point3DF p3,Point3DF p){
                   bary.getY()/bary.getZ(),
 		  bary.getX()/bary.getZ());
 }
-void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer, TGAImage &image,TGAColor color){
+void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,float intensite, TGAImage &image, TGAImage &texture){
   int maxX = max(p1.getX(),max(p2.getX(),p3.getX()));
   int minX = min(p1.getX(),min(p2.getX(),p3.getX()));
   int maxY = max(p1.getY(),max(p2.getY(),p3.getY()));
@@ -116,7 +116,7 @@ void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer, TGAImage &image
 }
 
 
-void dessin(int points1, int points2, int points3,vector< vector< float> >points,float * z_buffer,TGAImage &image){
+void dessin(int points1, int points2, int points3,vector< vector< float> >points,vector< Point3DF> textureVt,Point3DI texturef,float * z_buffer,TGAImage &image,TGAImage &texture){
   Point3DF lumiere(0,0,-1);
   int x0,x1,x2,y1,y2,y0,z0,z1,z2;
   x0=(points[points1-1][0]+1)*taille/2;
@@ -139,8 +139,12 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
   n.normalize();
   
   float intensite = n*lumiere;
+  Point3DF pt1 = 
+  Point3DF pt2
+  Point3DF pt3
+  
   if(intensite>0){
-    bary(p1, p2, p3,z_buffer,image,TGAColor(255*intensite,255*intensite,255*intensite,255));
+    bary(p1, p2, p3,z_buffer,intensite,image,texture);
   }
 }
 
@@ -148,14 +152,18 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
 int main(int argc, char** argv) {
         TGAImage image(taille,taille , TGAImage::RGB);
 	string name = "african_head.obj";
+	TGAImage texture;
+	texture.read_tga_file("african_head_diffuse.tga");
+	texture.flip_vertically();
 	float * z_buffer = new float[taille*taille];
 	
 	std::ifstream fichier(name.c_str());
 
 	Point3DI texturef
 	int x,y,z;
+	float xt,yt,zt;
 	vector< vector< float> > points;
-	vector< vector< float> > textureVt;
+	vector<  Point3DF> textureVt;
 	if(fichier) {
 	  std::string ligne;
 	  fichier >> ligne;
@@ -174,14 +182,15 @@ int main(int argc, char** argv) {
 		fichier >> ligne;
 	    }
 	    while( ligne == "vt"){
-	    vector<float> v;
+	    Point3DF v;
 	    fichier >> ligne;
-	    v.push_back(atof(ligne.c_str()));
+	    xt= atof(ligne.c_str());
 	    fichier >> ligne;
-	    v.push_back(atof(ligne.c_str()));
+	    yt=atof(ligne.c_str());
 	    fichier >> ligne;
-	    v.push_back(atof(ligne.c_str()));
+	    zt= atof(ligne.c_str());
 	    fichier >> ligne;
+	    v=new Point3DF(xt,yt,zt);
 	    textureVt.push_back(v);
 	  }
 	    while( ligne != "vt"){
@@ -206,7 +215,7 @@ int main(int argc, char** argv) {
 	      z=atoi(v[1].c_str());
 	      
 	      texturef= new Point3DI(x,y,z);
-	      dessin(points1,points2,points3,points,textureVt,texturef,image);
+	      dessin(points1,points2,points3,points,textureVt,texturef,z_buffer,image,texture);
 	      fichier >> ligne;
 	    }
 
