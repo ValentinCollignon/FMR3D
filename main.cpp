@@ -1,6 +1,7 @@
 #include "tgaimage.h"
 #include "point.h"
 #include "cmath"
+#include "matrix.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -8,12 +9,15 @@
 #include <vector>
 #include <cstdlib>
 #include <stdlib.h>
+
 using namespace std;
+
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 const int taille = 800;
-
-
+int const depth = 255;
+Point3DF lumiere(0,-1,-1);
+Point3DF camera(0,0,3);
 struct vector2D{
   float x,y;
 };
@@ -61,10 +65,33 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
     }
 }
 
+Point3DF matrixToPoint(Matrix m){
+  return Point3DF(m[0][0]/m[3][0],m[1][0]/m[3][0],m[2][0]/m[3][0]);
+}
 
-std::vector<std::string> split(const std::string &chaine, char delimiteur)
+Matrix pointToMatrix(Point3DF p){
+  Matrix m(4,1);
+  m[0][0] = p.getX();
+  m[1][0] = p.getY();
+  m[2][0] = p.getZ();
+  m[3][0] = 1.f;
+  return m;
+}
+
+Matrix viewport(int x, int y, int w, int h) {
+    Matrix m = Matrix::identity(4);
+    m[0][3] = x+w/2.f;
+    m[1][3] = y+h/2.f;
+    m[2][3] = depth/2.f;
+
+    m[0][0] = w/2.f;
+    m[1][1] = h/2.f;
+    m[2][2] = depth/2.f;
+    return m;
+}
+vector<std::string> split(const std::string &chaine, char delimiteur)
 {
-  std::vector<std::string> elements;
+  vector<string> elements;
   std::stringstream ss(chaine);
   std::string sousChaine;
   while (getline(ss, sousChaine, delimiteur))
@@ -90,7 +117,7 @@ Point3DF barycentre(Point3DF p1,Point3DF p2,Point3DF p3,Point3DF p){
                   bary.getY()/bary.getZ(),
 		  bary.getX()/bary.getZ());
 }
-void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Point3DF pt2,Point3DF pt3,float intensite, TGAImage &image, TGAImage &texture){
+void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Point3DF pt2,Point3DF pt3,float* intensite, TGAImage &image, TGAImage &texture){
   int maxX = max(p1.getX(),max(p2.getX(),p3.getX()));
   int minX = min(p1.getX(),min(p2.getX(),p3.getX()));
   int maxY = max(p1.getY(),max(p2.getY(),p3.getY()));
@@ -98,7 +125,7 @@ void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Poi
 
   Point3DF t;
   float z=0;
-  float textureX, textureY;
+  float textureX, textureY,intens;
   for(float x = minX ; x <= maxX ; x++){
     for(float y = minY; y<= maxY ;y++){
       t = Point3DF(x,y,z);
@@ -111,10 +138,10 @@ void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Poi
 
         textureX = pt1.getX()*bar.getX() + pt2.getX()*bar.getY() + pt3.getX()*bar.getZ();
         textureY = pt1.getY()*bar.getX() + pt2.getY()*bar.getY() + pt3.getY()*bar.getZ();
-
+	intens = intensite[0]*bar.getX()+intensite[1]*bar.getY()+intensite[2]*bar.getZ();
         TGAColor color = texture.get(textureX * texture.get_width() , textureY * texture.get_height());
 
-        image.set(x,y,color*intensite);
+        image.set(x,y,color*(-intens));
 
 
       }
@@ -123,9 +150,13 @@ void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Poi
 }
 
 
-void dessin(int points1, int points2, int points3,vector< vector< float> >points,vector< Point3DF> textureVt,Point3DI texturef,float * z_buffer,TGAImage &image,TGAImage &texture){
-  Point3DF lumiere(0,0,-1);
+void dessin(int points1, int points2, int points3,vector< vector< float> >points,vector< Point3DF> textureVt,Point3DI texturef,vector< Point3DF> intensiteVn,Point3DI intensitef,float * z_buffer,TGAImage &image,TGAImage &texture){
+  
   int x0,x1,x2,y1,y2,y0,z0,z1,z2;
+  Matrix Projection = Matrix::identity(4);
+  Matrix ViewPort   = viewport(taille/8, taille/8, taille*3/4, taille*3/4);
+  Projection[3][2] = -1.f/camera.getZ();
+  Point3DF screen_coords[3];
   x0=(points[points1-1][0]+1)*taille/2;
   y0=(points[points1-1][1]+1)*taille/2;
   z0=(points[points1-1][2]+1)*taille/2;
@@ -139,31 +170,39 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
   Point3DF p2 = Point3D<float>(x1,y1,z1);
   Point3DF p3 = Point3D<float>(x2,y2,z2);
   Point3DF world_coords[3],n;
-  world_coords[0] = Point3DF(points[points1-1][0]+1,points[points1-1][1]+1,points[points1-1][2]+1);
-  world_coords[1] = Point3DF(points[points2-1][0]+1,points[points2-1][1]+1,points[points2-1][2]+1);
-  world_coords[2] = Point3DF(points[points3-1][0]+1,points[points3-1][1]+1,points[points3-1][2]+1);
+  world_coords[0] = Point3DF(points[points1-1][0],points[points1-1][1],points[points1-1][2]);
+  world_coords[1] = Point3DF(points[points2-1][0],points[points2-1][1],points[points2-1][2]);
+  world_coords[2] = Point3DF(points[points3-1][0],points[points3-1][1],points[points3-1][2]);
+  
+  
+  for (int j=0; j<3; j++) {
+      screen_coords[j] = matrixToPoint(ViewPort*Projection*pointToMatrix(world_coords[j]));
+      
+  }
    n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
   n.normalize();
-
-  float intensite = n*lumiere;
+  float intensite [3];
+  intensite[0] = lumiere * intensiteVn[intensitef.getX()-1];
+  intensite[1] = lumiere * intensiteVn[intensitef.getY()-1];
+  intensite[2] = lumiere * intensiteVn[intensitef.getZ()-1];
+  
   Point3DF pt1 = (textureVt[texturef.getX()-1]);
   Point3DF pt2 = (textureVt[texturef.getY()-1]);
   Point3DF pt3 = (textureVt[texturef.getZ()-1]);
 
-  if(intensite>0){
-    bary(p1, p2, p3,z_buffer,pt1,pt2,pt3,intensite,image,texture);
-  }
+
+  bary(screen_coords[0],screen_coords[1],screen_coords[2],z_buffer,pt1,pt2,pt3,intensite,image,texture);
 }
 
 
 int main(int argc, char** argv) {
         TGAImage image(taille,taille , TGAImage::RGB);
-	//string name = "african_head.obj";
-    string name = "diablo3_pose.obj";
+	string name = "african_head.obj";
+	//string name = "diablo3_pose.obj";
 
 	TGAImage texture;
-	//texture.read_tga_file("african_head_diffuse.tga");
-	texture.read_tga_file("diablo3_pose_diffuse.tga");
+	texture.read_tga_file("african_head_diffuse.tga");
+	//texture.read_tga_file("diablo3_pose_diffuse.tga");
 
 	texture.flip_vertically();
 	float * z_buffer = new float[taille*taille];
@@ -175,6 +214,7 @@ int main(int argc, char** argv) {
 	float xt,yt,zt;
 	vector< vector< float> > points;
 	vector<  Point3DF> textureVt;
+	vector<  Point3DF> intensiteVn;
 	if(fichier) {
 	  std::string ligne;
 	  fichier >> ligne;
@@ -204,11 +244,26 @@ int main(int argc, char** argv) {
 	    Point3DF v(xt,yt,zt);
 	    textureVt.push_back(v);
 	  }
+	   while( ligne != "vn"){
+		fichier >> ligne;
+	    }
+	    while( ligne == "vn"){
+
+	    fichier >> ligne;
+	    xt= atof(ligne.c_str())+1;
+	    fichier >> ligne;
+	    yt=atof(ligne.c_str())+1;
+	    fichier >> ligne;
+	    zt= atof(ligne.c_str())+1;
+	    fichier >> ligne;
+	    Point3DF v(xt,yt,zt);
+	    intensiteVn.push_back(v);
+	  }
 	    while( ligne != "f"){
 		fichier >> ligne;
 	    }
 	    while( ligne == "f"){
-	      int points1;
+	      int points1,xvn,yvn,zvn;
 	      int points2;
 	      int points3;
 	      vector<string> v;
@@ -216,17 +271,21 @@ int main(int argc, char** argv) {
 	      v=split(ligne,'/');
 	      points1= atoi(v[0].c_str());
 	      x=atoi(v[1].c_str());
+	      xvn=atoi(v[2].c_str());
 	      fichier >> ligne;
 	      v=split(ligne,'/');
 	      points2= atoi(v[0].c_str());
 	      y=atoi(v[1].c_str());
+	      yvn=atoi(v[2].c_str());
 	      fichier >> ligne;
 	      v=split(ligne,'/');
 	      points3= atoi(v[0].c_str());
 	      z=atoi(v[1].c_str());
+	      zvn=atoi(v[2].c_str());
 
 	      Point3DI texturef(x,y,z);
-	      dessin(points1,points2,points3,points,textureVt,texturef,z_buffer,image,texture);
+	      Point3DI intensitef(xvn,yvn,zvn);
+	      dessin(points1,points2,points3,points,textureVt,texturef,intensiteVn,intensitef,z_buffer,image,texture);
 	      fichier >> ligne;
 	    }
 
@@ -240,6 +299,6 @@ int main(int argc, char** argv) {
 
 
 	image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-        image.write_tga_file("output7.tga");
+        image.write_tga_file("output8.tga");
         return 0;
 }
