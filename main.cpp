@@ -36,7 +36,6 @@ struct triangle{
   Point3DI p1,p2,p3;
 };
 
-//const vector3D lumiere = (0,0,-1);
 
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
        bool steep = false;
@@ -177,24 +176,12 @@ void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Poi
 
 void dessin(int points1, int points2, int points3,vector< vector< float> >points,vector< Point3DF> textureVt,Point3DI texturef,vector< Point3DF> intensiteVn,Point3DI intensitef,float * z_buffer,TGAImage &image,TGAImage &texture){
   
-  int x0,x1,x2,y1,y2,y0,z0,z1,z2;
+
   Matrix Projection = Matrix::identity(4);
   Matrix ViewPort   = viewport(taille/8, taille/8, taille*3/4, taille*3/4);
   Projection[3][2] = -1.f/camera.getZ();
   Point3DF screen_coords[3];
-  x0=(points[points1-1][0]+1)*taille/2;
-  y0=(points[points1-1][1]+1)*taille/2;
-  z0=(points[points1-1][2]+1)*taille/2;
-  x1=(points[points2-1][0]+1)*taille/2;
-  y1=(points[points2-1][1]+1)*taille/2;
-  z1=(points[points2-1][2]+1)*taille/2;
-  x2=(points[points3-1][0]+1)*taille/2;
-  y2=(points[points3-1][1]+1)*taille/2;
-  z2=(points[points3-1][2]+1)*taille/2;
-  Point3DF p1 = Point3D<float>(x0,y0,z0);
-  Point3DF p2 = Point3D<float>(x1,y1,z1);
-  Point3DF p3 = Point3D<float>(x2,y2,z2);
-  Point3DF world_coords[3],n;
+  Point3DF world_coords[3];
   world_coords[0] = Point3DF(points[points1-1][0],points[points1-1][1],points[points1-1][2]);
   world_coords[1] = Point3DF(points[points2-1][0],points[points2-1][1],points[points2-1][2]);
   world_coords[2] = Point3DF(points[points3-1][0],points[points3-1][1],points[points3-1][2]);
@@ -204,8 +191,6 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
       screen_coords[j] = matrixToPoint(ViewPort*Projection*lookat(eye,center,Point3DF(0,1,0))*pointToMatrix(world_coords[j]));
       
   }
-   n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
-  n.normalize();
   float intensite [3];
   intensite[0] = lumiere * intensiteVn[intensitef.getX()-1];
   intensite[1] = lumiere * intensiteVn[intensitef.getY()-1];
