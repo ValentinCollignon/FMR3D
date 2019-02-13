@@ -18,6 +18,9 @@ const int taille = 800;
 int const depth = 255;
 Point3DF lumiere(0,-1,-1);
 Point3DF camera(0,0,3);
+Point3DF eye(3,1,3);
+Point3DF center(0,0,0);
+
 struct vector2D{
   float x,y;
 };
@@ -89,6 +92,28 @@ Matrix viewport(int x, int y, int w, int h) {
     m[2][2] = depth/2.f;
     return m;
 }
+
+Matrix lookat(Point3DF eye, Point3DF center, Point3DF up) {	
+    Point3DF z = (eye-center).normalize();
+    Point3DF x = (up^z).normalize();
+    Point3DF y = (z^x).normalize();
+    Matrix res = Matrix::identity(4);
+    res[0][0] = x.getX();
+    res[0][1] = x.getY();
+    res[0][2] = x.getZ();
+    res[1][0] = y.getX();
+    res[1][1] = y.getY();
+    res[1][2] = y.getZ();
+    res[2][0] = z.getX();
+    res[2][1] = z.getY();
+    res[2][2] = z.getZ();
+    res[0][3] = -center.getX();
+    res[1][3] = -center.getY();
+    res[2][3] = -center.getZ();
+
+    return res;
+    
+}
 vector<std::string> split(const std::string &chaine, char delimiteur)
 {
   vector<string> elements;
@@ -140,7 +165,7 @@ void bary(Point3DF p1, Point3DF p2, Point3DF p3,float *z_buffer,Point3DF pt1,Poi
         textureY = pt1.getY()*bar.getX() + pt2.getY()*bar.getY() + pt3.getY()*bar.getZ();
 	intens = intensite[0]*bar.getX()+intensite[1]*bar.getY()+intensite[2]*bar.getZ();
         TGAColor color = texture.get(textureX * texture.get_width() , textureY * texture.get_height());
-
+	
         image.set(x,y,color*(-intens));
 
 
@@ -176,7 +201,7 @@ void dessin(int points1, int points2, int points3,vector< vector< float> >points
   
   
   for (int j=0; j<3; j++) {
-      screen_coords[j] = matrixToPoint(ViewPort*Projection*pointToMatrix(world_coords[j]));
+      screen_coords[j] = matrixToPoint(ViewPort*Projection*lookat(eye,center,Point3DF(0,1,0))*pointToMatrix(world_coords[j]));
       
   }
    n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
@@ -250,11 +275,11 @@ int main(int argc, char** argv) {
 	    while( ligne == "vn"){
 
 	    fichier >> ligne;
-	    xt= atof(ligne.c_str())+1;
+	    xt= atof(ligne.c_str());
 	    fichier >> ligne;
-	    yt=atof(ligne.c_str())+1;
+	    yt=atof(ligne.c_str());
 	    fichier >> ligne;
-	    zt= atof(ligne.c_str())+1;
+	    zt= atof(ligne.c_str());
 	    fichier >> ligne;
 	    Point3DF v(xt,yt,zt);
 	    intensiteVn.push_back(v);
